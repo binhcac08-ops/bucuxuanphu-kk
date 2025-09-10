@@ -27,17 +27,17 @@ function connectWebSocket() {
   console.log(`[🔄] Đang thử kết nối lại sau ${reconnectDelay / 1000} giây...`);
   clearTimeout(reconnectTimeout);
 
-  ws = new WebSocket(
-    // LƯU Ý QUAN TRỌNG: Token trong URL bên dưới có thể hết hạn.
-    // Nếu bạn gặp lỗi kết nối, hãy cập nhật token mới.
-    "wss://websocket.azhkthg1.net/websocket?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhbW91bnQiOjAsInVzZXJuYW1lIjoiU0NfYXBpc3Vud2luMTIzIn0.hgrRbSV6vnBwJMg9ZFtbx3rRu9mX_hZMZ_m5gMNhkw0",
-    {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Origin": "https://play.sun.win"
-      }
+  // LƯU Ý QUAN TRỌNG:
+  // Lỗi 403 xảy ra do token đã hết hạn. Bạn cần thay thế token mới
+  // để mã này hoạt động trở lại.
+  const websocketUrl = "wss://websocket.azhkthg1.net/websocket?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhbW91bnQiOjAsInVzZXJuYW1lIjoiU0NfYXBpc3Vud2luMTIzIn0.hgrRbSV6vnBwJMg9ZFtbx3rRu9mX_hZMZ_m5gMNhkw0";
+
+  ws = new WebSocket(websocketUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Origin": "https://play.sun.win"
     }
-  );
+  });
 
   ws.on("open", () => {
     console.log("[✅] WebSocket kết nối thành công!");
@@ -129,4 +129,4 @@ app.listen(PORT, () => {
   console.log(`[🌐] Server chạy tại http://localhost:${PORT}`);
   connectWebSocket();
 });
-              
+        
