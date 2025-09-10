@@ -19,11 +19,13 @@ const messagesToSend = [
 let ws = null;
 let pingInterval = null;
 let reconnectTimeout = null;
-let id_phien_chua_co_kq = null;
+let reconnectDelay = 2500; // Thời gian chờ ban đầu là 2.5 giây
+const MAX_RECONNECT_DELAY = 60000; // Thời gian chờ tối đa là 60 giây
 
 function connectWebSocket() {
-  // LƯU Ý QUAN TRỌNG: Token trong URL bên dưới có thể hết hạn.
-  // Nếu bạn gặp lỗi kết nối, hãy cập nhật token mới.
+  console.log(`[🔄] Đang thử kết nối lại sau ${reconnectDelay / 1000} giây...`);
+  clearTimeout(reconnectTimeout);
+
   ws = new WebSocket(
     "wss://websocket.azhkthg1.net/websocket?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhbW91bnQiOjAsInVzZXJuYW1lIjoiU0NfYXBpc3Vud2luMTIzIn0.hgrRbSV6vnBwJMg9ZFtbx3rRu9mX_hZMZ_m5gMNhkw0",
     {
@@ -35,7 +37,8 @@ function connectWebSocket() {
   );
 
   ws.on("open", () => {
-    console.log("[✅] WebSocket kết nối");
+    console.log("[✅] WebSocket kết nối thành công!");
+    reconnectDelay = 2500; // Reset thời gian chờ khi kết nối lại thành công
     messagesToSend.forEach((msg, i) => {
       setTimeout(() => {
         if (ws.readyState === WebSocket.OPEN) {
@@ -83,7 +86,6 @@ function connectWebSocket() {
           if (history.length > 50) history.pop(); // giữ tối đa 50 phiên
 
           console.log(`Phiên ${id_phien_chua_co_kq}: ${d1}-${d2}-${d3} = ${total} (${result})`);
-
           id_phien_chua_co_kq = null;
         }
       }
@@ -93,9 +95,10 @@ function connectWebSocket() {
   });
 
   ws.on("close", () => {
-    console.log("[🔌] WebSocket ngắt. Đang kết nối lại...");
+    console.log("[🔌] WebSocket ngắt kết nối. Đang lên lịch kết nối lại...");
     clearInterval(pingInterval);
-    reconnectTimeout = setTimeout(connectWebSocket, 2500);
+    reconnectTimeout = setTimeout(connectWebSocket, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
   });
 
   ws.on("error", (err) => {
@@ -123,4 +126,4 @@ app.listen(PORT, () => {
   console.log(`[🌐] Server chạy tại http://localhost:${PORT}`);
   connectWebSocket();
 });
-            
+                 
