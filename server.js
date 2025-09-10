@@ -21,12 +21,15 @@ let pingInterval = null;
 let reconnectTimeout = null;
 let reconnectDelay = 2500; // Thời gian chờ ban đầu là 2.5 giây
 const MAX_RECONNECT_DELAY = 60000; // Thời gian chờ tối đa là 60 giây
+let id_phien_chua_co_kq = null;
 
 function connectWebSocket() {
   console.log(`[🔄] Đang thử kết nối lại sau ${reconnectDelay / 1000} giây...`);
   clearTimeout(reconnectTimeout);
 
   ws = new WebSocket(
+    // LƯU Ý QUAN TRỌNG: Token trong URL bên dưới có thể hết hạn.
+    // Nếu bạn gặp lỗi kết nối, hãy cập nhật token mới.
     "wss://websocket.azhkthg1.net/websocket?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhbW91bnQiOjAsInVzZXJuYW1lIjoiU0NfYXBpc3Vud2luMTIzIn0.hgrRbSV6vnBwJMg9ZFtbx3rRu9mX_hZMZ_m5gMNhkw0",
     {
       headers: {
@@ -126,4 +129,4 @@ app.listen(PORT, () => {
   console.log(`[🌐] Server chạy tại http://localhost:${PORT}`);
   connectWebSocket();
 });
-                 
+              
