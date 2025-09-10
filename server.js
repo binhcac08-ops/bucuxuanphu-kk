@@ -30,7 +30,9 @@ function connectWebSocket() {
   // LƯU Ý QUAN TRỌNG:
   // Lỗi 403 xảy ra do token đã hết hạn. Bạn cần thay thế token mới
   // để mã này hoạt động trở lại.
-  const websocketUrl = "wss://websocket.azhkthg1.net/websocket?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhbW91bnQiOjAsInVzZXJuYW1lIjoiU0NfYXBpc3Vud2luMTIzIn0.hgrRbSV6vnBwJMg9ZFtbx3rRu9mX_hZMZ_m5gMNhkw0";
+  const websocketUrl = "wss://websocket.azhkthg1.net/websocket?token=_ga=GA1.1.1278245914.1757482821; _vid_t=o7AHgNJVO1+UF8P0c2CE2deGssKKPesJdJg4CZVB3olrFK/qAFrjbnOY0XjsBzhM3lhRheBvHZRHZQ==; PHPSESSID=6shfj4cih7hc229p8r7gnhirkf; _ga_DQ3928EMK5=GS2.1.s1757482821$o1$g1$t1757483335$j60$l0$h0; useragent=TW96aWxsYS81LjAgKExpbnV4OyBBbmRyb2lkIDE1OyBDUEgyNTkxKSBBcHBsZVdlYktpdC81MzcuMzYgKEtIVE1MLCBsaWtlIEdlY2tvKSBDaHJvbWUvMTA3LjAuMC4wIE1vYmlsZSBTYWZhcmkvNTM3LjM2; _uafec=Mozilla%2F5.0%20(Linux%3B%20Android%2015%3B%20CPH2591)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F107.0.0.0%20Mobile%20Safari%2F537.36;
+
+    ";
 
   ws = new WebSocket(websocketUrl, {
     headers: {
