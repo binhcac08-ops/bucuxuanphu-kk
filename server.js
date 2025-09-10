@@ -1,40 +1,65 @@
-const WebSocket = require("ws");
-const express = require("express");
-const cors = require("cors");
+const WebSocket = require('ws');
+const express = require('express');
+const cors = require('cors');
 
 const app = express();
 app.use(cors());
 const PORT = process.env.PORT || 5000;
 
-// Biến lưu dữ liệu
-let currentRound = null; // phiên mới nhất
-let history = [];        // danh sách lịch sử kết quả
+// === Biến lưu kết quả của phiên vừa xong ===
+let lastResult = null;
+let id_phien_chua_co_kq = null;
 
-let ws;
-let pingInterval;
+// === Danh sách tin nhắn gửi lên server WebSocket ===
+const messagesToSend = [
+  [1, "MiniGame", "SC_dsucac", "binhsex", {
+    "info": "{\"ipAddress\":\"\",\"userId\":\"\",\"username\":\"\",\"timestamp\":,\"refreshToken\":\"\"}",
+    "signature": ""
+  }],
+  [6, "MiniGame", "taixiuPlugin", { cmd: 1005 }],
+  [6, "MiniGame", "lobbyPlugin", { cmd: 10001 }]
+];
 
-// === Hàm kết nối WebSocket ===
+// === WebSocket ===
+let ws = null;
+let pingInterval = null;
+let reconnectTimeout = null;
+let isManuallyClosed = false;
+
+// Hàm dự đoán (không dùng trong API này, giữ lại cho logic cũ)
+function duDoanTiepTheo(pattern) {
+  if (pattern.length < 6) return "?";
+
+  const last3 = pattern.slice(-3).join('');
+  const last4 = pattern.slice(-4).join('');
+
+  const count = pattern.join('').split(last3).length - 1;
+  if (count >= 2) return last3[0];
+
+  const count4 = pattern.join('').split(last4).length - 1;
+  if (count4 >= 2) return last4[0];
+
+  return "?";
+}
+
 function connectWebSocket() {
-  ws = new WebSocket(
-    // 👉 Đây là WS + token mình gắn sẵn
-    "wss://websocket.azhkthg1.net/websocket?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhbW91bnQiOjAsInVzZXJuYW1lIjoiU0NfYXBpc3Vud2luMTIzIn0.hgrRbSV6vnBwJMg9ZFtbx3rRu9mX_hZMZ_m5gMNhkw0",
-    {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
-        Origin: "https://play.sun.win",
-      },
+  ws = new WebSocket("wss://websocket.azhkthg1.net/websocket?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhbW91bnQiOjAsInVzZXJuYW1lIjoiU0NfYXBpc3Vud2luMTIzIn0.hgrRbSV6vnBwJMg9ZFtbx3rRu9mX_hZMZ_m5gMNhkw0", {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Origin": "https://play.sun.win"
     }
-  );
+  });
 
-  ws.on("open", () => {
-    console.log("[✅] WebSocket kết nối thành công");
+  ws.on('open', () => {
+    console.log('[✅] WebSocket kết nối');
+    messagesToSend.forEach((msg, i) => {
+      setTimeout(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(msg));
+        }
+      }, i * 600);
+    });
 
-    // join game / lobby
-    ws.send(JSON.stringify([6, "MiniGame", "taixiuPlugin", { cmd: 1005 }]));
-    ws.send(JSON.stringify([6, "MiniGame", "lobbyPlugin", { cmd: 10001 }]));
-
-    // Ping giữ kết nối
     pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
@@ -42,71 +67,73 @@ function connectWebSocket() {
     }, 15000);
   });
 
-  ws.on("message", (message) => {
+  ws.on('pong', () => {
+    console.log('[📶] Ping OK');
+  });
+
+  ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
-
-      if (Array.isArray(data) && typeof data[1] === "object") {
+      if (Array.isArray(data) && typeof data[1] === 'object') {
         const cmd = data[1].cmd;
 
-        // Phiên mới
         if (cmd === 1008 && data[1].sid) {
-          currentRound = data[1].sid;
-          console.log(`🆕 Phiên mới: ${currentRound}`);
+          id_phien_chua_co_kq = data[1].sid;
         }
 
-        // Kết quả phiên
         if (cmd === 1003 && data[1].gBB) {
           const { d1, d2, d3 } = data[1];
-          const tong = d1 + d2 + d3;
-          const ket_qua = tong > 10 ? "Tài" : "Xỉu";
+          const total = d1 + d2 + d3;
+          const result = total > 10 ? "Tài" : "Xỉu";
 
-          const record = {
-            Phien: currentRound,
-            ket_qua,
-            tong,
-            xuc_xac_1: d1,
-            xuc_xac_2: d2,
-            xuc_xac_3: d3,
+          // Cập nhật biến lastResult với định dạng API mới
+          lastResult = {
+            "Phien": id_phien_chua_co_kq,
+            "ket_qua": result,
+            "tong": total,
+            "xuc_xac_1": d1,
+            "xuc_xac_2": d2,
+            "xuc_xac_3": d3
           };
 
-          history.unshift(record);
-          if (history.length > 50) history.pop();
-
-          console.log("🎲 Kết quả:", record);
+          console.log(`[🎯] Cập nhật kết quả phiên ${lastResult.Phien}: ${lastResult.xuc_xac_1}-${lastResult.xuc_xac_2}-${lastResult.xuc_xac_3} = ${lastResult.tong} (${lastResult.ket_qua})`);
+          id_phien_chua_co_kq = null;
         }
       }
-    } catch (err) {
-      console.error("❌ Lỗi parse:", err.message);
+    } catch (e) {
+      console.error('[Lỗi]:', e.message);
     }
   });
 
-  ws.on("close", () => {
-    console.log("[🔌] WebSocket đóng, kết nối lại sau 3s...");
+  ws.on('close', () => {
+    console.log('[🔌] WebSocket ngắt. Đang kết nối lại...');
     clearInterval(pingInterval);
-    setTimeout(connectWebSocket, 3000);
+    if (!isManuallyClosed) {
+      reconnectTimeout = setTimeout(connectWebSocket, 2500);
+    }
   });
 
-  ws.on("error", (err) => {
-    console.error("[❌] Lỗi WebSocket:", err.message);
+  ws.on('error', (err) => {
+    console.error('[❌] WebSocket lỗi:', err.message);
   });
 }
 
 // === API ===
-app.get("/", (req, res) => {
-  res.send("✅ API Sunwin History đang chạy!");
+app.get('/taixiu', (req, res) => {
+  if (lastResult) {
+    res.json(lastResult);
+  } else {
+    res.status(200).json({ status: "Đang chờ kết quả phiên đầu tiên..." });
+  }
 });
 
-app.get("/phienmoinhat", (req, res) => {
-  res.json({ currentRound });
+app.get('/', (req, res) => {
+  res.send(`<h2>🎯 Kết quả Sunwin Tài Xỉu</h2><p><a href="/taixiu">Xem kết quả JSON</a></p>`);
 });
 
-app.get("/lichsu", (req, res) => {
-  res.json(history);
-});
-
-// === Start server ===
+// === Khởi động server ===
 app.listen(PORT, () => {
   console.log(`[🌐] Server chạy tại http://localhost:${PORT}`);
   connectWebSocket();
 });
+          
